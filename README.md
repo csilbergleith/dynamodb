@@ -1,3 +1,3 @@
-# DynamoDB and java
+# DynamoDB and Java
 
-So coding examples using java with DynamoDB
+Some coding examples using java with DynamoDB
