@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
-@Builder
+
 @Data
 public class Vendor {
 
     @JsonProperty("id")
-    String id;
+    private String id;
 
     @JsonProperty("Offices")
-    VendorOffice Offices;
+    private VendorOffice Offices;
 }

@@ -12,9 +12,9 @@ import java.util.List;
 public class VendorOffice {
 
     @JsonProperty("Name")
-    String Name;
+    private String Name;
 
     @JsonProperty("Offices")
-    List<String> Offices;
+    private List<String> Offices;
 
 }

@@ -6,13 +6,9 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
-
-import java.sql.Timestamp;
 
 import static io.vertx.core.Vertx.vertx;
 
@@ -56,18 +52,6 @@ public class DynamoMain extends AbstractVerticle {
                     action = jsonBody.getString("action") != null ? jsonBody.getString("action") : action;
                     title = jsonBody.getString("title") != null ? jsonBody.getString("title") : title;
                     year = jsonBody.getString("year") != null ? jsonBody.getString("year") : year;
-
-                    vertx.executeBlocking(future -> {
-                        result = takeAction.act( action, year, title, tableName, jsonBody);
-                        future.complete(result);
-                    }, res -> {
-                        sendResponse(action, res.result().toString(), response, startTime);
-                    });
-                }
-                else {
-                    System.out.println("no body");
-
-                    JsonObject jsonBody = null;
 
                     vertx.executeBlocking(future -> {
                         result = takeAction.act( action, year, title, tableName, jsonBody);
