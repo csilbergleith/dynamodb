@@ -2,6 +2,7 @@ package com.csilberg.aws;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.csilberg.aws.enums.ActionControl;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
@@ -16,6 +17,8 @@ public class TakeAction {
     }
 
     public String act (String action, String year, String title, String tableName, JsonObject requestBody) {
+
+        ActionControl act = ActionControl.getAction(action);
 
         System.out.println("action: " + action);
         switch (action) {
@@ -45,6 +48,18 @@ public class TakeAction {
                 break;
             case "product-deleteItem":
                 message = dbClient.productDeleteItem(requestBody);
+                break;
+            case "getItemMapper":
+                message = dbClient.getItemMapper(requestBody);
+                break;
+            case "writeItemMapper":
+                message = dbClient.writeItemMapper(requestBody);
+                break;
+            case "testMapper":
+                message = dbClient.testMapper(requestBody);
+                break;
+            case "writeCatalogItem":
+                message = dbClient.writeCatalogItem(requestBody);
                 break;
             case "scan-item":
                 message = dbClient.scanItem(year, title);

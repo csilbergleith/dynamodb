@@ -2,10 +2,11 @@ package com.csilberg.aws;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
 import com.amazonaws.services.dynamodbv2.document.DeleteItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.ItemUtils;
 import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -25,12 +26,11 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import com.csilberg.aws.models.MusicItem;
+import com.csilberg.aws.models.ProductCatalog;
+import com.csilberg.aws.models.RequestFields;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.apache.http.impl.client.FutureRequestExecutionMetrics;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,6 +138,156 @@ public class DynamoClient {
 
         return dbResponse.toString();
     }
+
+    public String getItemMapper(JsonObject requestBody) {
+
+        DynamoDBMapper mapper = new DynamoDBMapper(dynamoDB);
+
+        String returnMessage;
+        MusicItem keySchema = new MusicItem();
+
+        String artist = requestBody.getString("Artist") == null ? null : requestBody.getString("Artist");
+        String title =  requestBody.getString("Title") == null ? null : requestBody.getString("Title");
+        int year = requestBody.getInteger("year") == null ? 0 : requestBody.getInteger("year");
+
+        keySchema.setArtist(artist);
+        keySchema.setSongTitle(title);
+
+        try {
+            MusicItem result = mapper.load(keySchema);
+
+            if (result != null) {
+                returnMessage = String.format("The song was released in %d", result.getYear());
+                System.out.println("mapper result: " + result.getSongTitle());
+                System.out.println(returnMessage);
+            } else {
+                returnMessage = "No matching song found ";
+                System.out.println(returnMessage);
+            }
+
+        } catch (AmazonServiceException e) {
+            System.err.println("error: " + e.getErrorMessage());
+            return "Service Error: " + e.getErrorMessage();
+        } catch (Exception e) {
+            System.err.println("error: " + e.getMessage());
+            return "Service Error: " + e.getMessage();
+
+        }
+
+        return returnMessage;
+    }
+
+    public String writeItemMapper(JsonObject requestBody) {
+
+        DynamoDBMapper mapper = new DynamoDBMapper(dynamoDB);
+
+        String returnMessage;
+
+        MusicItem musicItem = new MusicItem();
+
+        String artist = requestBody.getString("Artist") == null ? null : requestBody.getString("Artist");
+        String title =  requestBody.getString("Title") == null ? null : requestBody.getString("Title");
+        String albumTitle = requestBody.getString("Album") == null ? null : requestBody.getString("Album");
+        int year = requestBody.getInteger("Year") == null ? 0 : requestBody.getInteger("Year");
+
+        musicItem.setArtist(artist);
+        musicItem.setSongTitle(title);
+        musicItem.setYear(year);
+        musicItem.setAlbumTitle(albumTitle);
+
+        try {
+            mapper.save(musicItem);
+        } catch (AmazonServiceException e) {
+            System.err.println("error: " + e.getErrorMessage());
+            return "Service Error: " + e.getErrorMessage();
+        } catch (Exception e) {
+            System.err.println("error: " + e.getMessage());
+            return "Service Error: " + e.getMessage();
+
+        }
+
+        return "Song " + title + " added via mapper";
+    }
+
+    public String writeCatalogItem(JsonObject requestBody) {
+
+        ProductCatalog catalogItem = new ProductCatalog();
+
+        catalogItem.setId(requestBody.getInteger("Id"));
+        catalogItem.setTitle(requestBody.getString("Title"));
+        catalogItem.setISBN(requestBody.getString("ISBN"));
+
+        DynamoDBMapper mapper = new DynamoDBMapper(dynamoDB);
+        try {
+            mapper.save(catalogItem);
+        }catch (AmazonServiceException e) {
+            System.err.println("error: " + e.getErrorMessage());
+            return "Service Error: " + e.getErrorMessage();
+        } catch (Exception e) {
+            System.err.println("error: " + e.getMessage());
+            return "Service Error: " + e.getMessage();
+
+        }
+        return String.format("Item %d saved", requestBody.getInteger("Id"));
+    }
+
+    public String testMapper(JsonObject requestBody) {
+
+        final int id = requestBody.getInteger("Id");
+
+        ProductCatalog item = new ProductCatalog();
+        item.setId(id);
+        item.setTitle("Book " + Integer.toString(id));
+        item.setISBN("611-1111111111");
+        item.setPrice(100);
+        item.setDescription("This is a test of description");
+        item.setBookAuthors(new HashSet<String>(Arrays.asList("Author1", "Author2")));
+
+        if (requestBody.getString("Title") != null) {
+            item.setTitle(requestBody.getString("Title"));
+        }
+
+        // Save the item (book).
+        DynamoDBMapper mapper = new DynamoDBMapper(dynamoDB);
+        mapper.save(item);
+
+        // Retrieve the item.
+        ProductCatalog itemRetrieved = mapper.load(ProductCatalog.class, id);
+        System.out.println("Item retrieved:");
+        System.out.println(itemRetrieved);
+
+        // Update the item.
+        itemRetrieved.setISBN("622-2222222222");
+        itemRetrieved.setBookAuthors(new HashSet<String>(Arrays.asList("Author1", "Author3")));
+        mapper.save(itemRetrieved);
+        System.out.println("Item updated:");
+        System.out.println(itemRetrieved);
+
+        // Retrieve the updated item.
+//        DynamoDBMapperConfig config = new DynamoDBMapperConfig(DynamoDBMapperConfig.ConsistentReads.CONSISTENT);
+        ProductCatalog updatedItem = mapper.load(ProductCatalog.class, id);
+        System.out.println("Retrieved the previously updated item:");
+        System.out.println(updatedItem);
+
+//         Delete the item.
+        if (requestBody.getBoolean("keep") != null) {
+            if (requestBody.getBoolean("keep") == false) {
+                mapper.delete(updatedItem);
+            }
+        }
+
+        // Try to retrieve deleted item.
+        ProductCatalog deletedItem = mapper.load(ProductCatalog.class, updatedItem.getId());
+        if (deletedItem == null) {
+            System.out.println("Done - Sample item is deleted.");
+        }
+        else {
+            System.out.println(String.format("Sample item %d still exists", deletedItem.getId()));
+        }
+
+        return "testMapper Done";
+    }
+
 
     public String listTables() {
         System.out.println("Table List:");
@@ -297,6 +447,7 @@ public class DynamoClient {
                 .withNumber("Price", 500)
                 .withStringSet("Color",  new HashSet<String>(Arrays.asList("Red", "Black")))
                 .withString("ProductCategory", "Bicycle")
+                .withString("ISBN", "555-12345678")
                 .withBoolean("InStock", true)
                 .withNull("QuantityOnHand")
                 .withList("RelatedItems", relatedItems)
@@ -362,6 +513,11 @@ public class DynamoClient {
         }
     }
 
+    private RequestFields parseRequest(JsonObject requestBody){
+        RequestFields requestFields = new RequestFields();
+
+        return requestFields;
+    }
 
 //    public String deleteTable(String tableName) {
 //        System.out.println("Delete table " + tableName);
